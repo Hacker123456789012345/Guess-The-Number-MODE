@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Number Quest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Level select screen -->
+  <div id="level-screen">
+    <div id="header">
+      <div id="logo">
+        <div id="logo-icon">🎯</div>
+        <div id="logo-text">Number Quest</div>
+      </div>
+      <div id="tagline">// guess the secret number · 1 – 100</div>
+    </div>
+
+    <div id="level-card">
+      <div id="level-title">Choose your difficulty</div>
+      <div id="level-options">
+
+        <div class="level-btn" id="btn-easy" onclick="selectLevel('easy')">
+          <div class="level-icon">🟢</div>
+          <div class="level-info">
+            <div class="level-name">Easy</div>
+            <div class="level-desc">7 guesses · relaxed pace</div>
+          </div>
+          <div class="level-badge easy-badge">7 lives</div>
+        </div>
+
+        <div class="level-btn" id="btn-medium" onclick="selectLevel('medium')">
+          <div class="level-icon">🟡</div>
+          <div class="level-info">
+            <div class="level-name">Medium</div>
+            <div class="level-desc">5 guesses · think carefully</div>
+          </div>
+          <div class="level-badge medium-badge">5 lives</div>
+        </div>
+
+        <div class="level-btn" id="btn-hard" onclick="selectLevel('hard')">
+          <div class="level-icon">🔴</div>
+          <div class="level-info">
+            <div class="level-name">Hard</div>
+            <div class="level-desc">3 guesses · choose wisely</div>
+          </div>
+          <div class="level-badge hard-badge">3 lives</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Game screen -->
+  <div id="game-screen" style="display:none;">
+    <div id="header2">
+      <div id="logo2">
+        <div id="logo-icon2">🎯</div>
+        <div id="logo-text2">Number Quest</div>
+      </div>
+      <div id="tagline2">// guess the secret number · 1 – 100</div>
+    </div>
+
+    <div id="card">
+      <div id="top-row">
+        <div id="lives"></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div id="difficulty-pill"></div>
+          <div id="guesses-badge">— guesses left</div>
+        </div>
+      </div>
+
+      <div id="grid"></div>
+
+      <div id="range-row">
+        <span id="range-label">Possible range</span>
+        <span id="range-val">1 – 100</span>
+      </div>
+      <div id="range-track">
+        <div id="range-fill"></div>
+      </div>
+
+      <div id="feedback">
+        <span id="fb-emoji">🤔</span>
+        <div>
+          <div id="fb-main">Pick a number between 1 and 100</div>
+          <div id="fb-sub">Type your guess below and hit Enter</div>
+        </div>
+      </div>
+
+      <div id="input-row">
+        <input type="number" id="guess-input" min="1" max="100" placeholder="0" />
+        <button onclick="submitGuess()">Guess →</button>
+      </div>
+
+      <div id="history-header">
+        <span id="history-label">History</span>
+        <div id="history-divider"></div>
+      </div>
+      <div id="history-list">
+        <div class="empty-hint">— no guesses yet —</div>
+      </div>
+
+      <div id="end-screen">
+        <div id="end-emoji"></div>
+        <div id="end-title"></div>
+        <div id="end-sub"></div>
+        <div id="end-secret"></div>
+        <div id="end-actions">
+          <button id="end-replay" onclick="replayLevel()">Play again</button>
+          <button id="end-menu" class="secondary" onclick="showLevelScreen()">Change difficulty</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const MAX = 100;
+  let secret, guesses, maxG, lo, hi, done, currentLevel;
+
+  function selectLevel(level) {
+    currentLevel = level;
+    maxG = level === 'hard' ? 3 : level === 'medium' ? 5 : 7;
+    document.getElementById('level-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display  = 'block';
+    const pill = document.getElementById('difficulty-pill');
+    pill.textContent = level === 'hard' ? '🔴 Hard' : level === 'medium' ? '🟡 Medium' : '🟢 Easy';
+    pill.className   = 'diff-pill ' + level;
+    startGame();
+  }
+
+  function showLevelScreen() {
+    document.getElementById('game-screen').style.display  = 'none';
+    document.getElementById('level-screen').style.display = 'block';
+  }
+
+  function replayLevel() { startGame(); }
+
+  function startGame() {
+    secret = Math.floor(Math.random() * MAX) + 1;
+    guesses = 0; lo = 1; hi = MAX; done = false;
+    document.getElementById('end-screen').style.display    = 'none';
+    document.getElementById('input-row').style.display     = 'flex';
+    document.getElementById('history-header').style.display= 'flex';
+    document.getElementById('feedback').style.display      = 'flex';
+    document.getElementById('history-list').innerHTML = '<div class="empty-hint">— no guesses yet —</div>';
+    document.getElementById('guess-input').value = '';
+    setFeedback('🤔', 'Pick a number between 1 and 100', 'Type your guess below and hit Enter', '');
+    buildLives(); buildGrid(); updateRange();
+    document.getElementById('guess-input').focus();
+  }
+
+  function buildLives() {
+    const el = document.getElementById('lives');
+    el.innerHTML = '';
+    for (let i = 0; i < maxG; i++) {
+      const h = document.createElement('span');
+      h.className = 'heart'; h.id = 'h' + i; h.textContent = '❤️';
+      el.appendChild(h);
+    }
+  }
+
+  function loseHeart(i) {
+    const h = document.getElementById('h' + i);
+    if (h) { h.textContent = '🖤'; h.classList.add('lost'); }
+  }
+
+  function buildGrid() {
+    const el = document.getElementById('grid');
+    el.innerHTML = '';
+    for (let i = 1; i <= MAX; i++) {
+      const d = document.createElement('div');
+      d.className = 'tile possible'; d.id = 't' + i; d.textContent = i;
+      el.appendChild(d);
+    }
+  }
+
+  function updateGrid(guess, won) {
+    for (let i = 1; i <= MAX; i++) {
+      const t = document.getElementById('t' + i);
+      if (won && i === secret)      t.className = 'tile correct';
+      else if (i < lo || i > hi)    t.className = 'tile eliminated';
+      else if (i === guess && !won) t.className = 'tile guessed';
+      else                          t.className = 'tile possible';
+    }
+  }
+
+  function updateRange() {
+    document.getElementById('range-val').textContent = lo + ' – ' + hi;
+    const fill = document.getElementById('range-fill');
+    fill.style.left  = ((lo - 1) / MAX * 100) + '%';
+    fill.style.width = ((hi - lo + 1) / MAX * 100) + '%';
+    const left = maxG - guesses;
+    document.getElementById('guesses-badge').textContent =
+      left + ' guess' + (left !== 1 ? 'es' : '') + ' left';
+  }
+
+  function setFeedback(emoji, main, sub, type) {
+    const box = document.getElementById('feedback');
+    document.getElementById('fb-emoji').textContent = emoji;
+    document.getElementById('fb-main').textContent  = main;
+    document.getElementById('fb-sub').textContent   = sub;
+    box.style.borderColor = type === 'success' ? 'var(--green-border)'
+                          : type === 'warn'    ? 'var(--amber-border)'
+                          : type === 'danger'  ? 'var(--red-border)'
+                          : 'var(--border)';
+    box.style.background  = type === 'success' ? 'var(--green-bg)'
+                          : type === 'warn'    ? 'var(--amber-bg)'
+                          : type === 'danger'  ? 'var(--red-bg)'
+                          : 'var(--surface2)';
+  }
+
+  function addHistory(guess, tag, cls) {
+    const list = document.getElementById('history-list');
+    if (list.querySelector('.empty-hint')) list.innerHTML = '';
+    const pct = Math.round((guess / MAX) * 100);
+    const row = document.createElement('div');
+    row.className = 'h-row';
+    row.innerHTML = `
+      <span class="h-num">${guess}</span>
+      <div class="h-bar-wrap"><div class="h-bar ${cls}" style="width:${pct}%"></div></div>
+      <span class="h-tag ${cls}">${tag}</span>
+    `;
+    list.insertBefore(row, list.firstChild);
+  }
+
+  function submitGuess() {
+    if (done) return;
+    const input = document.getElementById('guess-input');
+    const val   = parseInt(input.value);
+    if (!val || val < 1 || val > MAX) {
+      setFeedback('⚠️', 'Enter a number between 1 and 100', 'Try again!', 'danger');
+      return;
+    }
+    input.value = '';
+    const diff = Math.abs(val - secret);
+    loseHeart(guesses);
+    guesses++;
+
+    if (val === secret) {
+      updateGrid(val, true); updateRange();
+      addHistory(val, '✓ correct', 'win');
+      setFeedback('🎯', 'You got it!',
+        `The number was ${secret} — found in ${guesses} guess${guesses !== 1 ? 'es' : ''}`, 'success');
+      showEnd(true);
+      return;
+    }
+
+    if (val < secret) lo = Math.max(lo, val + 1);
+    else              hi = Math.min(hi, val - 1);
+    updateGrid(val, false); updateRange();
+
+    const left = maxG - guesses;
+    let emoji, main, sub, type, tag, cls;
+
+    if (val < secret) {
+      cls = 'up'; tag = '↑ too low';
+      if      (diff <= 5)  { emoji = '🔥'; main = 'Go higher — scorching hot!'; type = 'success'; }
+      else if (diff <= 15) { emoji = '♨️'; main = 'Go higher — getting warm';   type = 'warn'; }
+      else                 { emoji = '⬆️'; main = 'Go higher';                   type = ''; }
+    } else {
+      cls = 'down'; tag = '↓ too high';
+      if      (diff <= 5)  { emoji = '🔥'; main = 'Go lower — scorching hot!';  type = 'success'; }
+      else if (diff <= 15) { emoji = '♨️'; main = 'Go lower — getting warm';    type = 'warn'; }
+      else                 { emoji = '⬇️'; main = 'Go lower';                    type = ''; }
+    }
+    sub = `Range: ${lo}–${hi}  ·  ${left} guess${left !== 1 ? 'es' : ''} left`;
+    addHistory(val, tag, cls);
+    setFeedback(emoji, main, sub, type);
+
+    if (guesses >= maxG) showEnd(false);
+    else input.focus();
+  }
+
+  function showEnd(won) {
+    done = true;
+    document.getElementById('input-row').style.display = 'none';
+    document.getElementById('feedback').style.display  = 'none';
+    const es = document.getElementById('end-screen');
+    es.style.display = 'flex';
+    if (won) {
+      document.getElementById('end-emoji').textContent = guesses <= 3 ? '🏆' : guesses <= 5 ? '🎉' : '✅';
+      document.getElementById('end-title').textContent = 'You nailed it!';
+      document.getElementById('end-sub').textContent   = `Cracked it in ${guesses} out of ${maxG} guesses.`;
+    } else {
+      document.getElementById('end-emoji').textContent = '💀';
+      document.getElementById('end-title').textContent = 'Game over';
+      document.getElementById('end-sub').textContent   = 'You ran out of guesses.';
+    }
+    document.getElementById('end-secret').textContent = `The number was ${secret}`;
+  }
+
+  document.getElementById('guess-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitGuess();
+  });
+</script>
+
+</body>
+</html>
